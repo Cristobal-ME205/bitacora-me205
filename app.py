@@ -1,13 +1,12 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 
-# Configuración con el logo de pino en la pestaña
-st.set_page_config(page_title="INFOCA ME-205", page_icon="🌲", layout="wide")
+# Configuración con el helicóptero
+st.set_page_config(page_title="INFOCA ME-205", page_icon="🚁", layout="wide")
 
-# Título con el logo
-st.title("🌲 Registro Directo INFOCA ME-205")
+st.title("🚁 Registro Directo INFOCA ME-205")
 
 # Conexión con el Excel
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -16,62 +15,50 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 df_existente = conn.read(ttl=0)
 
 # --- FORMULARIO PARA ANOTAR ---
-with st.form("nuevo_registro"):
-    st.write("### 📝 Anotar Jornada")
-    
-    # Aquí tienes el selector de fecha otra vez
-    fecha = st.date_input("Selecciona la fecha", datetime.now())
-    
-    tipo = st.selectbox("Tipo de día", [
-        "Guardia Presencial", 
-        "Pernocta", 
-        "Incendio", 
-        "Asuntos Propios", 
-        "Vacaciones",
-        "Refuerzo"
-    ])
-    
-    jornada = st.radio("Horas de jornada", [7, 8], horizontal=True)
-    
-    # Si es incendio, te deja escribir las horas exactas
-    if tipo == "Incendio":
-        horas_final = st.number_input("Horas totales del incendio", min_value=0.0, value=7.0, step=0.5)
-    else:
-        horas_final = float(jornada)
-    
-    submit = st.form_submit_button("🚀 GUARDAR EN EL EXCEL")
+with st.expander("📝 ANOTAR NUEVA JORNADA", expanded=True):
+    with st.form("nuevo_registro"):
+        fecha_registro = st.date_input("Fecha", datetime.now())
+        tipo = st.selectbox("Tipo", ["Guardia Presencial", "Pernocta", "Incendio", "Asuntos Propios", "Vacaciones"])
+        jornada = st.radio("Jornada", [7, 8], horizontal=True)
+        
+        if tipo == "Incendio":
+            horas_final = st.number_input("Horas exactas", min_value=0.0, value=7.0, step=0.5)
+        else:
+            horas_final = float(jornada)
+        
+        submit = st.form_submit_button("🚀 GUARDAR EN EL EXCEL")
 
 if submit:
-    # Creamos la nueva fila
-    nueva_fila = pd.DataFrame([{
-        "Fecha": fecha.strftime('%d/%m/%Y'), 
-        "Tipo": tipo, 
-        "Horas": horas_final
-    }])
-    
-    # Unimos y subimos
+    nueva_fila = pd.DataFrame([{"Fecha": fecha_registro.strftime('%Y-%m-%d'), "Tipo": tipo, "Horas": horas_final}])
     df_actualizado = pd.concat([df_existente, nueva_fila], ignore_index=True)
     conn.update(data=df_actualizado)
-    
-    st.success(f"✅ ¡Guardado! Has anotado {horas_final}h el día {fecha.strftime('%d/%m/%Y')}")
-    st.balloons()
+    st.success("¡Guardado!")
     st.rerun()
 
 st.divider()
 
-# --- RESUMEN Y TOTALES ---
-st.subheader("📊 Cómputo Acumulado")
+# --- FILTRO POR FECHAS (DESDE / HASTA) ---
+st.subheader("🔍 Filtrar por Fechas")
+col1, col2 = st.columns(2)
+with col1:
+    fecha_inicio = st.date_input("Desde", value=date(2024, 1, 1))
+with col2:
+    fecha_fin = st.date_input("Hasta", value=datetime.now())
 
+# Convertir la columna Fecha a formato fecha para poder filtrar
 if not df_existente.empty:
-    # Aseguramos que la columna Horas sea numérica para sumar bien
-    df_existente["Horas"] = pd.to_numeric(df_existente["Horas"], errors='coerce').fillna(0)
-    total_horas = df_existente["Horas"].sum()
+    df_existente['Fecha'] = pd.to_datetime(df_existente['Fecha']).dt.date
     
-    # El total en grande
-    st.metric(label="HORAS TOTALES ACUMULADAS", value=f"{total_horas} h")
+    # Filtrar los datos según las fechas elegidas
+    mask = (df_existente['Fecha'] >= fecha_inicio) & (df_existente['Fecha'] <= fecha_fin)
+    df_filtrado = df_existente.loc[mask]
+
+    # --- TOTALES FILTRADOS ---
+    st.subheader(f"📊 Cómputo del periodo seleccionado")
+    total_filtrado = pd.to_numeric(df_filtrado["Horas"], errors='coerce').sum()
+    st.metric("HORAS EN ESTE PERIODO", f"{total_filtrado} h")
     
-    # Historial de los últimos 10 días
-    st.write("### Últimos 10 registros")
-    st.table(df_existente.tail(10))
+    st.write("Registros encontrados:")
+    st.table(df_filtrado)
 else:
-    st.info("Todavía no hay datos. ¡Empieza a anotar!")
+    st.info("Aún no hay datos guardados.")
