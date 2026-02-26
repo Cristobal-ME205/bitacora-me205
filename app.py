@@ -1,24 +1,25 @@
 import streamlit as st
 from datetime import datetime
 
-st.set_page_config(page_title="Cómputo Horario ME-205", layout="wide")
+# Configuración de la página
+st.set_page_config(page_title="INFOCA ME-205", layout="wide")
 
-# Título y Logo
+# Logo
 try:
-    st.image("logo.jpg", width=150)
+    st.image("logo.jpg", width=120)
 except:
     st.title("🌲 INFOCA ME-205")
 
-st.header("Control de Jornada y Horas")
+st.header("Cómputo de Jornada y Horas")
 st.divider()
 
-# --- SECCIÓN 1: DATOS DE LA JORNADA ---
+# --- DATOS GENERALES ---
 col1, col2 = st.columns(2)
 
 with col1:
-    tipo_dia = st.selectbox("Tipo de Jornada / Ausencia", [
+    tipo_dia = st.selectbox("Tipo de Registro", [
         "Guardia Presencial", 
-        "Guardia No Presencial (Disponibilidad)",
+        "Guardia No Presencial",
         "Pernocta",
         "Preventivo",
         "Incendio",
@@ -27,35 +28,32 @@ with col1:
         "Asuntos Propios"
     ])
     
-    fecha_inicio = st.date_input("Fecha Inicio", datetime.now())
-    fecha_fin = st.date_input("Fecha Fin", datetime.now())
+    # Selector de jornada manual
+    jornada_base = st.radio("Jornada del día (Horas)", [7, 8], horizontal=True)
 
 with col2:
-    # Lógica de horas según el mes (7h u 8h)
-    mes_actual = fecha_inicio.month
-    # Supongamos: Meses de verano (6,7,8,9) son 8h, el resto 7h (Ajusta si es distinto)
-    horas_base = 8 if mes_actual in [6, 7, 8, 9] else 7
-    st.info(f"Jornada base para este mes: {horas_base} horas")
-    
-    if tipo_dia == "Incendio":
-        horas_incendio = st.number_input("Cantidad de horas en Incendio", min_value=0.0, step=0.5)
-    else:
-        st.write("Jornada estándar aplicada")
+    fecha_inicio = st.date_input("Desde el día", datetime.now())
+    fecha_fin = st.date_input("Hasta el día", datetime.now())
 
-# --- SECCIÓN 2: CÓMPUTO ---
-st.subheader("Resumen del Registro")
+st.divider()
+
+# --- CÁLCULO ESPECÍFICO ---
 dias_totales = (fecha_fin - fecha_inicio).days + 1
+horas_calculadas = 0.0
 
 if tipo_dia == "Incendio":
-    total_horas = horas_incendio
+    horas_calculadas = st.number_input("Horas totales en incendio (Contabilizadas)", min_value=0.0, step=0.5)
 elif tipo_dia in ["Vacaciones", "Asuntos Propios", "Día por Compensación"]:
-    total_horas = 0
+    horas_calculadas = 0.0
+    st.info(f"Día de ausencia: {dias_totales} día(s). No suma horas al cómputo.")
 else:
-    total_horas = dias_totales * horas_base
+    horas_calculadas = dias_totales * jornada_base
+    st.info(f"Cálculo: {dias_totales} día(s) x {jornada_base}h")
 
-st.metric("Total Horas para el Cómputo", f"{total_horas} h")
+# --- RESUMEN ---
+st.subheader("Cómputo Total")
+st.metric("Horas a acumular", f"{horas_calculadas} h")
 
-# --- BOTÓN GUARDAR ---
-if st.button("💾 Guardar en el Histórico"):
-    st.success(f"Registrado: {tipo_dia} ({dias_totales} días). Total: {total_horas} horas.")
+if st.button("💾 Guardar Registro"):
+    st.success(f"Guardado: {tipo_dia} - {horas_calculadas} horas totales.")
     st.balloons()
