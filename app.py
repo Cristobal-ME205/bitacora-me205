@@ -1,36 +1,50 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-
-# ENLACE DE TU EXCEL
-SHEET_ID = "1NuBt419QbI_Kws5rySiyC1ddnGWCQSciWxcrLwESOCc"
-SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
+from datetime import datetime
 
 st.set_page_config(page_title="INFOCA ME-205", layout="wide")
-st.title("🌲 Registro ME-205")
+st.title("🌲 Registro Directo INFOCA ME-205")
 
-# Función para leer el Excel
-def cargar_datos():
-    try:
-        df = pd.read_csv(SHEET_URL)
-        # Aseguramos que la columna Horas sea número
-        df['Horas'] = pd.to_numeric(df['Horas'], errors='coerce')
-        return df
-    except:
-        return pd.DataFrame()
+# Conectamos con el Excel usando la llave de "Secrets"
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-df = cargar_datos()
+# Cargamos lo que ya hay en el Excel
+df_existente = conn.read(ttl=0)
 
-# --- AQUÍ APARECERÁ LA SUMA ---
-st.subheader("📊 Resumen Acumulado")
-
-if not df.empty:
-    total_horas = df['Horas'].sum()
-    st.metric("TOTAL HORAS EN EL EXCEL", f"{total_horas} h")
+# FORMULARIO PARA ESCRIBIR
+with st.form("nuevo_registro"):
+    st.write("### 📝 Anotar Jornada")
+    fecha = st.date_input("Fecha", datetime.now())
+    tipo = st.selectbox("Tipo de día", ["Guardia Presencial", "Pernocta", "Incendio", "Asuntos Propios", "Vacaciones"])
+    jornada = st.radio("Horas de jornada", [7, 8], horizontal=True)
     
-    st.write("Últimos datos anotados:")
-    st.dataframe(df.tail(10))
-else:
-    st.error("No puedo leer los datos. Asegúrate de que el Excel tenga la columna 'Horas'.")
+    # Si es incendio, dejamos poner horas exactas
+    if tipo == "Incendio":
+        horas_final = st.number_input("Horas del incendio", min_value=0.0, value=7.0, step=0.5)
+    else:
+        horas_final = float(jornada)
+
+    submit = st.form_submit_button("🚀 GUARDAR EN EL EXCEL")
+
+if submit:
+    # Creamos la nueva fila
+    nueva_fila = pd.DataFrame([{"Fecha": str(fecha), "Tipo": tipo, "Jornada": jornada, "Horas": horas_final}])
+    
+    # Juntamos lo viejo con lo nuevo
+    df_actualizado = pd.concat([df_existente, nueva_fila], ignore_index=True)
+    
+    # Lo mandamos al Excel de Google
+    conn.update(data=df_actualizado)
+    st.success("¡Guardado correctamente! Ya puedes ver la suma abajo.")
+    st.balloons()
 
 st.divider()
-st.info("Para añadir más horas, escríbelas en tu hoja de Google Sheets y refresca esta página.")
+
+# MOSTRAR EL CÓMPUTO
+st.subheader("📊 Cómputo Acumulado")
+if not df_existente.empty:
+    total = pd.to_numeric(df_existente["Horas"], errors='coerce').sum()
+    st.metric("HORAS TOTALES", f"{total} h")
+    st.write("Últimos registros:")
+    st.table(df_existente.tail(5))
