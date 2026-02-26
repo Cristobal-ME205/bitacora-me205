@@ -31,24 +31,16 @@ if submit:
 
 st.divider()
 
-# --- SECCIÓN PARA BORRAR Y TOTALES ---
+# --- TOTALES ---
 st.subheader("📊 Cómputo Acumulado")
 
 if not df_existente.empty:
-    # Mostrar la suma total
-    total = pd.to_numeric(df_existente["Horas"], errors='coerce').sum()
-    st.metric("HORAS TOTALES", f"{total} h")
+    # Convertir a número por si acaso
+    df_existente["Horas"] = pd.to_numeric(df_existente["Horas"], errors='coerce').fillna(0)
+    total = df_existente["Horas"].sum()
     
-    # Tabla con los datos
-    st.write("Últimos registros:")
-    st.table(df_existente.tail(5))
-
-    # BOTÓN DE BORRAR (SOLO SI HAY DATOS)
-    st.warning("⚠️ ¿Te has equivocado en el último registro?")
-    if st.button("🗑️ BORRAR ÚLTIMA FILA"):
-        df_borrado = df_existente.drop(df_existente.index[-1]) # Quita la última fila
-        conn.update(data=df_borrado)
-        st.error("Último registro eliminado.")
-        st.rerun()
+    st.metric("HORAS TOTALES", f"{total} h")
+    st.write("Últimos registros guardados:")
+    st.table(df_existente.tail(10))
 else:
-    st.info("No hay datos todavía.")
+    st.info("No hay datos todavía. ¡Anota tu primera guardia!")
