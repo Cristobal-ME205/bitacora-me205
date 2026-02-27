@@ -6,8 +6,8 @@ from datetime import datetime, date
 # 1. Configuración de la pestaña
 st.set_page_config(page_title="INFOCA ME-205", page_icon="🚁", layout="wide")
 
-# 2. EL LOGO (Ahora usando el enlace oficial directo)
-st.image("https://www.agenciamedioambienteyagua.es/images/logo_infoca.png", width=200)
+# 2. EL LOGO (Enlace directo para que no falle)
+st.image("https://raw.githubusercontent.com/Cristobalinfoca/Infoca/main/logo.png", width=150)
 st.title("Registro de Jornadas ME-205")
 
 # 3. CONEXIÓN
@@ -23,7 +23,6 @@ with st.container(border=True):
     paraje_info = ""
     horas_totales = 7.0
     
-    # Si eliges incendio, sale el cuadro del lugar
     if tipo_dia == "Incendio":
         st.info("🔥 Has seleccionado Incendio. Por favor, indica el lugar.")
         paraje_info = st.text_input("📍 ¿Dónde ha sido el incendio? (Pueblo o Paraje)")
