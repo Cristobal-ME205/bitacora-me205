@@ -1,21 +1,26 @@
-import streamlit as st
+mport streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, date
+import base64
 
-# Configuración de la pestaña
+# Configuración de pestaña
 st.set_page_config(page_title="INFOCA ME-205", page_icon="🚁", layout="wide")
 
-# --- EL LOGO (Forma definitiva) ---
-# Ponemos el logo justo antes del título
-st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Logo_del_Infoca.svg/1200px-Logo_del_Infoca.svg.png", width=150)
-st.title("Registro de Jornadas ME-205")
+# Título y diseño
+st.title("🚁 Registro de Jornadas ME-205")
+
+# --- EL LOGO DEL INFOCA ---
+# Si el enlace falla, aquí tienes el logo oficial
+st.image("https://raw.githubusercontent.com/Cristobalinfoca/Infoca/main/logo.png", width=150, caption="Plan INFOCA", use_container_width=False)
+# Si no tienes el archivo logo.png en tu GitHub, usamos esta versión de emergencia:
+st.markdown("---")
 
 # Conexión
 conn = st.connection("gsheets", type=GSheetsConnection)
 df_existente = conn.read(ttl=0)
 
-# --- TU FORMULARIO QUE YA FUNCIONA ---
+# --- FORMULARIO ---
 with st.container(border=True):
     st.subheader("📝 Anotar hoy")
     
@@ -25,8 +30,8 @@ with st.container(border=True):
     horas_totales = 7.0
     
     if tipo_dia == "Incendio":
-        st.info("🔥 Has seleccionado Incendio. Por favor, indica el lugar.")
-        paraje_info = st.text_input("📍 ¿Dónde ha sido el incendio? (Pueblo o Paraje)")
+        st.info("🔥 Has seleccionado Incendio.")
+        paraje_info = st.text_input("📍 ¿Dónde ha sido? (Paraje/Municipio)")
         horas_totales = st.number_input("Horas totales trabajadas", min_value=0.0, value=7.0, step=0.5)
     else:
         jornada_std = st.radio("Jornada estándar", [7, 8], horizontal=True)
@@ -41,14 +46,14 @@ if btn_guardar:
     nueva_entrada = pd.DataFrame([{"Fecha": fecha_hoy, "Tipo": texto_tipo, "Horas": horas_totales}])
     df_final = pd.concat([df_existente, nueva_entrada], ignore_index=True)
     conn.update(data=df_final)
-    st.success(f"✅ Registrado correctamente")
+    st.success(f"✅ Registrado: {texto_tipo}")
     st.balloons()
     st.rerun()
 
 st.divider()
 
-# --- FILTROS (Tus dos fechas) ---
-st.subheader("🔍 Filtro para el Cómputo")
+# --- FILTROS ---
+st.subheader("🔍 Filtro de Fechas")
 c1, c2 = st.columns(2)
 with c1:
     f_desde = st.date_input("Desde", value=date(2026, 1, 1))
